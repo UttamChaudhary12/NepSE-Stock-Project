@@ -1,0 +1,160 @@
+# =========================
+# Jupyter Notebook
+# =========================
+
+# Ignore this specific notebook
+Nepse.ipynb
+
+# Jupyter checkpoint folders
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+
+# =========================
+# Large / Raw Data Files
+# =========================
+
+data/*.csv
+
+# Other large/raw data formats
+*.parquet
+*.feather
+*.h5
+*.hdf5
+
+
+# =========================
+# Python
+# =========================
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python compiled files
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+
+# =========================
+# Virtual Environments
+# =========================
+
+venv/
+.venv/
+env/
+ENV/
+virML/
+
+
+# =========================
+# IDE / Editor Files
+# =========================
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+
+# =========================
+# Operating System Files
+# =========================
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+
+# =========================
+# Logs
+# =========================
+
+*.log
+logs/
+
+
+# =========================
+# Temporary Files
+# =========================
+
+*.tmp
+*.temp
+*.swp
+*.swo
+
+
+# =========================
+# Environment / Secret Files
+# =========================
+
+.env
+.env.*
+!.env.example
+
+*.key
+*.pem
+
+
+# =========================
+# ML / Model Files
+# =========================
+
+*.pkl
+*.pickle
+*.joblib
+
+# Large trained models
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# TensorFlow / Keras
+*.h5
+*.keras
+
+
+# =========================
+# ML Experiment Folders
+# =========================
+
+runs/
+wandb/
+mlruns/
+checkpoints/
+
+
+# =========================
+# Cache
+# =========================
+
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+
+# =========================
+# Miscellaneous
+# =========================
+
+*.bak
+*.backup
