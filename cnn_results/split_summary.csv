@@ -1,0 +1,4 @@
+split,samples,first_prediction,last_prediction,SELL,HOLD,BUY
+train,40255,2025-08-17,2026-03-30,10836,20074,9345
+validation,10324,2026-04-01,2026-05-25,2821,5108,2395
+test,11003,2026-05-27,2026-07-21,3028,5805,2170

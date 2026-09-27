@@ -1,0 +1,5 @@
+name,lr,dropout,batch_size,epochs,best_epoch,val_macro_f1
+reference,0.001,0.5,128,10,3,0.4038237595247642
+lower_lr,0.0003,0.5,128,10,6,0.40303091806313013
+both_changes,0.0003,0.2,128,10,3,0.40009682579185374
+lower_dropout,0.001,0.2,128,10,3,0.3901631819280719

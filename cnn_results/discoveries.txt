@@ -1,0 +1,19 @@
+Used 40,255 training, 10,324 validation and 11,003 test sequences from the week-2 floorsheet.
+
+Selected reference (learning rate 0.001, dropout 0.5) at epoch 3; validation macro F1 0.4038.
+
+The selected validation macro F1 differs from the reference by +0.0000.
+
+Held-out CNN accuracy 0.4818, balanced accuracy 0.4386, macro F1 0.4360, weighted F1 0.4864.
+
+Always-HOLD accuracy 0.5276 and macro F1 0.2302; CNN differences are -0.0458 accuracy and +0.2057 macro F1.
+
+SELL: precision 0.3874, recall 0.3920, F1 0.3897, support 3028.
+
+HOLD: precision 0.6202, recall 0.5804, F1 0.5996, support 5805.
+
+BUY: precision 0.2972, recall 0.3433, F1 0.3186, support 2170.
+
+Largest off-diagonal confusion: actual SELL predicted HOLD (1,262 samples).
+
+Limitations: one seed and one time split; overlapping windows and shared market dates create correlated samples. No confidence intervals or profitability claim. Prices are unadjusted last-trade proxies; corporate actions, sparse trading, changing class balance and irregular session gaps can affect labels and generalization. The 1% threshold and 20-session window were fixed, not tuned. A wider search, repeated seeds and walk-forward validation are future work.
