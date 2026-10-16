@@ -1,0 +1,89 @@
+{% extends 'predictor/base.html' %}
+{% load fmt %}
+{% block content %}
+<h1>Signals for {{ day|date:"j M Y" }}</h1>
+<p class="sub">
+  What the model expects over the next {{ run.info.horizon|default:5 }} trading sessions for each stock.
+  BUY means a rise larger than the stock's own threshold, SELL a fall larger than it, HOLD anything in between.
+  {% if day == latest %}This is the latest session in the data.{% endif %}
+</p>
+
+<div class="grid">
+  <div class="card stat buy"><div class="label">BUY</div><div class="value">{{ counts.BUY }}</div></div>
+  <div class="card stat hold"><div class="label">HOLD</div><div class="value">{{ counts.HOLD }}</div></div>
+  <div class="card stat sell"><div class="label">SELL</div><div class="value">{{ counts.SELL }}</div></div>
+  <div class="card stat"><div class="label">Stocks scored</div><div class="value">{{ total }}</div></div>
+</div>
+
+{% if not out_of_sample %}
+<div class="notice">
+  This date falls in the model's <strong>training period</strong> (before {{ run.test_start|date:"j M Y" }}).
+  The model learned from these outcomes, so the hit/miss column here overstates real accuracy.
+</div>
+{% endif %}
+
+<form class="filters" method="get">
+  <label>Date
+    <select name="date">
+      {% for d in dates %}<option value="{{ d|date:'Y-m-d' }}" {% if d == day %}selected{% endif %}>{{ d|date:"Y-m-d" }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Signal
+    <select name="signal">
+      <option value="">All</option>
+      <option value="BUY" {% if f.signal == 'BUY' %}selected{% endif %}>BUY</option>
+      <option value="HOLD" {% if f.signal == 'HOLD' %}selected{% endif %}>HOLD</option>
+      <option value="SELL" {% if f.signal == 'SELL' %}selected{% endif %}>SELL</option>
+    </select>
+  </label>
+  <label>Sector
+    <select name="sector">
+      <option value="">All sectors</option>
+      {% for s in sectors %}<option value="{{ s }}" {% if f.sector == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Sort by
+    <select name="sort">
+      {% for s in sorts %}<option value="{{ s }}" {% if f.sort == s %}selected{% endif %}>{{ s|capfirst }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Search<input type="search" name="q" value="{{ f.q }}" placeholder="Symbol or name"></label>
+  <label class="check"><input type="checkbox" name="liquid" value="1" {% if f.liquid %}checked{% endif %} style="height:auto">&nbsp;20+ trades only</label>
+  <button type="submit">Apply</button>
+</form>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Symbol</th><th>Company</th><th>Sector</th><th class="num">Close</th><th class="num">Change</th>
+    <th class="num">Trades</th><th>Signal</th><th>Probabilities</th><th class="num">Threshold</th><th>Outcome</th>
+  </tr></thead>
+  <tbody>
+  {% for s in rows %}
+    <tr>
+      <td><a href="{% url 'stock' s.stock_id %}"><strong>{{ s.stock_id }}</strong></a></td>
+      <td class="name">{{ s.stock.name }}</td>
+      <td class="muted">{{ s.stock.sector }}</td>
+      <td class="num">{{ s.close|floatformat:2 }}</td>
+      <td class="num {% if s.change > 0 %}up{% elif s.change < 0 %}down{% endif %}">{{ s.change|spct }}</td>
+      <td class="num">{{ s.trade_count }}</td>
+      <td><span class="badge {{ s.signal }}">{{ s.signal }}</span> <span class="muted">{{ s.confidence|pct:0 }}</span></td>
+      <td title="SELL {{ s.p_sell|pct }} · HOLD {{ s.p_hold|pct }} · BUY {{ s.p_buy|pct }}">
+        <div class="probs"><span class="s" style="width:{{ s.p_sell|width }}"></span><span class="h" style="width:{{ s.p_hold|width }}"></span><span class="b" style="width:{{ s.p_buy|width }}"></span></div>
+      </td>
+      <td class="num muted">±{{ s.threshold|pct }}</td>
+      <td>{% if s.actual %}<span class="{% if s.correct %}ok{% else %}miss{% endif %}">{{ s.actual }}</span> <span class="muted">{{ s.fwd_return|spct }}</span>{% else %}<span class="muted">pending</span>{% endif %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="10" class="muted">No stocks match these filters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<div class="legend">
+  <span><i class="dot" style="background:var(--sell)"></i>P(SELL)</span>
+  <span><i class="dot" style="background:var(--hold)"></i>P(HOLD)</span>
+  <span><i class="dot" style="background:var(--buy)"></i>P(BUY)</span>
+  <span>Outcome = what actually happened over the next {{ run.info.horizon|default:5 }} sessions (green if the signal matched).</span>
+</div>
+{% endblock %}

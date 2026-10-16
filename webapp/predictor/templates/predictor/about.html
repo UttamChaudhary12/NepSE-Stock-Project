@@ -1,0 +1,79 @@
+{% extends 'predictor/base.html' %}
+{% load fmt %}
+{% block title %}Model · NEPSE Signals{% endblock %}
+{% block content %}
+<h1>About the model</h1>
+<p class="sub">How the signals are produced, and how well they held up on data the model never saw.</p>
+
+{% if run %}
+<div class="split">
+  <div class="card">
+    <dl class="kv">
+      <dt>Model</dt><dd>LSTM ensemble ({{ run.info.seeds|length }} seeds)</dd>
+      <dt>Inputs</dt><dd>{{ run.info.n_features }} daily features × {{ run.info.config.window }} sessions + sector</dd>
+      <dt>Feature set</dt><dd>{{ run.info.config.features }}</dd>
+      <dt>Hidden / layers</dt><dd>{{ run.info.config.hidden }} / {{ run.info.config.layers }}</dd>
+      <dt>Pooling</dt><dd>{{ run.info.config.pool }}</dd>
+      <dt>Dropout</dt><dd>{{ run.info.config.dropout }}</dd>
+      <dt>Learning rate</dt><dd>{{ run.info.config.lr }}</dd>
+      <dt>Epochs</dt><dd>{{ run.info.epochs }}</dd>
+      <dt>Class weights</dt><dd>{{ run.info.config.weights }}</dd>
+      <dt>Trained on</dt><dd>labels ending before {{ run.test_start|date:"j M Y" }}</dd>
+      <dt>Data through</dt><dd>{{ run.data_through|date:"j M Y" }}</dd>
+      <dt>Signals built</dt><dd>{{ run.built_at|date:"j M Y H:i" }}</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">What a signal means</h2>
+    <p>For each stock and day, the model looks at the last {{ run.info.config.window }} trading sessions and estimates the probability
+      of each outcome over the next <strong>{{ run.info.horizon }} sessions</strong>:</p>
+    <ul>
+      <li><span class="badge BUY">BUY</span>: return above <code>+threshold</code></li>
+      <li><span class="badge SELL">SELL</span>: return below <code>−threshold</code> (NEPSE has no retail short selling, so read this as "exit or avoid")</li>
+      <li><span class="badge HOLD">HOLD</span>: anything in between</li>
+    </ul>
+    <p>The threshold is <code>max({{ run.info.min_move|pct:0 }}, {{ run.info.k_vol }} × 20-session volatility × √{{ run.info.horizon }})</code>,
+      so a volatile stock needs a bigger move to count. The class with the highest bias-adjusted log probability is shown
+      (bias SELL {{ run.info.bias.0|floatformat:1 }}, BUY {{ run.info.bias.2|floatformat:1 }}, chosen on validation folds).</p>
+  </div>
+</div>
+
+<h2>Held-out evaluation</h2>
+<p class="sub">Test block from {{ run.test_start|date:"j M Y" }}: never used for training or tuning. Always-HOLD is the naive baseline.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Model</th><th class="num">Walk-forward macro F1</th><th class="num">Test accuracy</th>
+    <th class="num">Test balanced accuracy</th><th class="num">Test macro F1</th></tr></thead>
+  <tbody>
+  {% for r in run.info.comparison %}
+    <tr><td>{{ r.model }}</td><td class="num">{{ r.walk_forward_macro_f1|num }}</td><td class="num">{{ r.test_accuracy|num }}</td>
+      <td class="num">{{ r.test_balanced_accuracy|num }}</td><td class="num">{{ r.test_macro_f1|num }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2>Backtest on the test block</h2>
+<p class="sub">Long-only, equal weight, {{ run.info.horizon }}-session holds, 0.8% round-trip cost, averaged over {{ run.info.horizon }} start days.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Strategy</th><th class="num">Trades</th><th class="num">Mean net return per trade</th><th class="num">Cumulative</th></tr></thead>
+  <tbody>
+  {% for r in run.info.backtest %}
+    <tr><td>{{ r.strategy }}</td><td class="num">{{ r.trades }}</td><td class="num">{{ r.mean_net_trade|spct:2 }}</td>
+      <td class="num">{{ r.mean_cumulative|spct:2 }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="notice">
+  <strong>Limitations.</strong> One year of data with a single test period of about six weeks in a falling market.
+  Prices are unadjusted last-trade proxies, with no corporate-action adjustment. Sectors come from company-name keywords.
+  Accuracy is only modestly above chance, and no strategy here has been shown to make money after costs.
+  Use this as a research tool, not as investment advice.
+</div>
+{% else %}
+<p>No model run yet. Run <code>python manage.py build_signals</code>.</p>
+{% endif %}
+{% endblock %}

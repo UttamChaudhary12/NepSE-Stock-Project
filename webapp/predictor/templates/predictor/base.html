@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}NEPSE Signals{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'predictor/style.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <a class="brand" href="{% url 'dashboard' %}">NEPSE <span>Signals</span></a>
+    <nav>
+      <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Signals</a>
+      <a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">Model</a>
+    </nav>
+  </div>
+</header>
+<main>{% block content %}{% endblock %}</main>
+<footer>
+  Experimental research model (tuned LSTM ensemble), trained on one year of StockPati floorsheet data.
+  Signals are not financial advice: held-out macro F1 is modest and the backtest lost money after costs.
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,103 @@
+{% extends 'predictor/base.html' %}
+{% load fmt %}
+{% block title %}{{ stock.symbol }} · NEPSE Signals{% endblock %}
+{% block content %}
+<p class="sub"><a href="{% url 'dashboard' %}">← All signals</a></p>
+<h1>{{ stock.symbol }}</h1>
+<p class="sub">{{ stock.name }} · {{ stock.sector }}{% if stock.promoter %} · promoter share{% endif %}</p>
+
+<div class="split">
+  <div class="card">
+    <div class="muted" style="font-size:13px">Latest signal · {{ latest.date|date:"j M Y" }}</div>
+    <p style="margin:10px 0"><span class="badge big {{ latest.signal }}">{{ latest.signal }}</span></p>
+    <div class="probs wide"><span class="s" style="width:{{ latest.p_sell|width }}"></span><span class="h" style="width:{{ latest.p_hold|width }}"></span><span class="b" style="width:{{ latest.p_buy|width }}"></span></div>
+    <dl class="kv" style="margin-top:14px">
+      <dt>P(BUY)</dt><dd>{{ latest.p_buy|pct }}</dd>
+      <dt>P(HOLD)</dt><dd>{{ latest.p_hold|pct }}</dd>
+      <dt>P(SELL)</dt><dd>{{ latest.p_sell|pct }}</dd>
+      <dt>Close</dt><dd>{{ latest.close|floatformat:2 }} <span class="{% if latest.change > 0 %}up{% elif latest.change < 0 %}down{% endif %}">({{ latest.change|spct }})</span></dd>
+      <dt>Trades</dt><dd>{{ latest.trade_count }}{% if latest.trade_count < 20 %} <span class="muted">(thin)</span>{% endif %}</dd>
+      <dt>Threshold</dt><dd>±{{ latest.threshold|pct }} over {{ run.info.horizon|default:5 }} sessions</dd>
+      <dt>Out-of-sample hits</dt>
+      <dd>{% if hit_rate is not None %}{{ hits }} / {{ scored }} ({{ hit_rate|pct:0 }}){% else %}<span class="muted">none yet</span>{% endif %}</dd>
+    </dl>
+    <p class="muted" style="font-size:12px;margin-bottom:0">
+      Hits count only signals after {{ run.test_start|date:"j M Y" }} whose outcome is known. One stock has few such signals, so treat this as anecdotal.
+    </p>
+  </div>
+  <div class="card">
+    <div class="chart-box"><canvas id="price"></canvas></div>
+    <div class="chart-box small"><canvas id="probs"></canvas></div>
+  </div>
+</div>
+
+<h2>Recent signals</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Date</th><th class="num">Close</th><th class="num">Change</th><th>Signal</th>
+    <th class="num">P(BUY)</th><th class="num">P(HOLD)</th><th class="num">P(SELL)</th><th>Outcome</th><th></th></tr></thead>
+  <tbody>
+  {% for s in history %}
+  <tr>
+    <td>{{ s.date|date:"Y-m-d" }}</td>
+    <td class="num">{{ s.close|floatformat:2 }}</td>
+    <td class="num {% if s.change > 0 %}up{% elif s.change < 0 %}down{% endif %}">{{ s.change|spct }}</td>
+    <td><span class="badge {{ s.signal }}">{{ s.signal }}</span></td>
+    <td class="num">{{ s.p_buy|pct }}</td><td class="num">{{ s.p_hold|pct }}</td><td class="num">{{ s.p_sell|pct }}</td>
+    <td>{% if s.actual %}<span class="{% if s.correct %}ok{% else %}miss{% endif %}">{{ s.actual }}</span> <span class="muted">{{ s.fwd_return|spct }}</span>{% else %}<span class="muted">pending</span>{% endif %}</td>
+    <td class="muted">{% if s.in_sample %}training{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{{ chart|json_script:"chart-data" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const d = JSON.parse(document.getElementById('chart-data').textContent);
+const css = getComputedStyle(document.documentElement);
+const color = name => css.getPropertyValue(name).trim();
+const C = {BUY: color('--buy'), HOLD: color('--hold'), SELL: color('--sell')};
+const grid = color('--line'), text = color('--muted');
+Chart.defaults.color = text;
+Chart.defaults.borderColor = grid;
+const testIdx = d.test_start ? d.dates.findIndex(x => x >= d.test_start) : -1;
+const testLine = {
+  id: 'testLine',
+  afterDraw(chart) {
+    if (testIdx < 0) return;
+    const x = chart.scales.x.getPixelForValue(testIdx), {top, bottom} = chart.chartArea, ctx = chart.ctx;
+    ctx.save(); ctx.strokeStyle = text; ctx.setLineDash([4, 4]); ctx.beginPath();
+    ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.fillStyle = text; ctx.font = '11px system-ui'; ctx.fillText('out-of-sample →', x + 4, top + 12); ctx.restore();
+  }
+};
+new Chart(document.getElementById('price'), {
+  type: 'line',
+  data: {labels: d.dates, datasets: [{
+    label: 'Close', data: d.close, borderColor: color('--accent'), borderWidth: 1.5, tension: .15,
+    pointRadius: 2.5, pointBackgroundColor: d.signal.map(s => C[s]), pointBorderWidth: 0,
+  }]},
+  options: {maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+    plugins: {legend: {display: false}, title: {display: true, text: 'Close price (points coloured by signal)'},
+      tooltip: {callbacks: {afterLabel: c => 'Signal: ' + d.signal[c.dataIndex]}}},
+    scales: {x: {ticks: {maxTicksLimit: 8}}}},
+  plugins: [testLine],
+});
+new Chart(document.getElementById('probs'), {
+  type: 'line',
+  data: {labels: d.dates, datasets: [
+    {label: 'P(SELL)', data: d.p_sell, borderColor: C.SELL, backgroundColor: C.SELL, fill: 'origin', pointRadius: 0, borderWidth: 1},
+    {label: 'P(HOLD)', data: d.p_hold, borderColor: C.HOLD, backgroundColor: C.HOLD, fill: '-1', pointRadius: 0, borderWidth: 1},
+    {label: 'P(BUY)', data: d.p_buy, borderColor: C.BUY, backgroundColor: C.BUY, fill: '-1', pointRadius: 0, borderWidth: 1},
+  ]},
+  options: {maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+    plugins: {legend: {position: 'bottom', labels: {boxWidth: 10}}},
+    scales: {x: {ticks: {maxTicksLimit: 8}}, y: {stacked: true, min: 0, max: 1}}},
+  plugins: [testLine],
+});
+</script>
+{% endblock %}
